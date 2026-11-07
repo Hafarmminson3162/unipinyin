@@ -55,7 +55,7 @@ namespace UniPinyin
             {
                 NativeMethods.KBDLLHOOKSTRUCT kb = (NativeMethods.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(NativeMethods.KBDLLHOOKSTRUCT));
 
-                // Bỏ qua nếu là sự kiện do chính UniPinyin phát ra
+                // Ignore simulated inputs sent by UniPinyin
                 if (kb.dwExtraInfo == NativeMethods.EXTRA_INFO_SIGNATURE)
                 {
                     return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
@@ -63,12 +63,11 @@ namespace UniPinyin
 
                 int msg = wParam.ToInt32();
 
-                // Chỉ xử lý khi nhấn phím (KeyDown)
                 if (msg == NativeMethods.WM_KEYDOWN || msg == NativeMethods.WM_SYSKEYDOWN)
                 {
                     uint vk = kb.vkCode;
 
-                    // 1. Kiểm tra phím tắt chuyển đổi chế độ (Hotkey Toggle)
+                    // 1. Check Toggle Hotkey
                     if (CheckHotkeyToggle(vk))
                     {
                         _settings.IsEnabled = !_settings.IsEnabled;
@@ -80,22 +79,22 @@ namespace UniPinyin
                         {
                             OnLanguageToggled(_settings.IsEnabled);
                         }
-                        return (IntPtr)1; // Chặn phím tắt lan truyền nếu cần
+                        return (IntPtr)1;
                     }
 
-                    // 2. Nếu đang ở chế độ Tiếng Anh (tắt), cho phím đi qua bình thường
+                    // 2. If disabled (English mode), pass all keys through
                     if (!_settings.IsEnabled)
                     {
                         return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
                     }
 
-                    // 3. Đang ở chế độ Tiếng Trung:
+                    // 3. Chinese mode:
                     bool isCtrl = (NativeMethods.GetAsyncKeyState(0x11) & 0x8000) != 0;
                     bool isAlt = (NativeMethods.GetAsyncKeyState(0x12) & 0x8000) != 0;
                     bool isShift = (NativeMethods.GetAsyncKeyState(0x10) & 0x8000) != 0;
                     bool isCapsLock = (Control.IsKeyLocked(Keys.CapsLock));
 
-                    // Nếu đang nhấn kèm Ctrl hoặc Alt (phím tắt hệ thống như Ctrl+C, Ctrl+V, Alt+Tab...), cho đi qua
+                    // If system shortcut (Ctrl+C, Ctrl+V, Alt+Tab...), pass through
                     if (isCtrl || isAlt)
                     {
                         if (_candidateManager.HasBuffer)
@@ -106,29 +105,27 @@ namespace UniPinyin
                         return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
                     }
 
-                    // A. Khi chưa có buffer pinyin
+                    // A. When buffer is empty
                     if (!_candidateManager.HasBuffer)
                     {
-                        // Nếu nhấn chữ cái A-Z và không giữ Shift, không CapsLock
                         if (vk >= 0x41 && vk <= 0x5A)
                         {
                             if (isShift || isCapsLock)
                             {
-                                // Người dùng muốn gõ chữ hoa tiếng Anh
                                 return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
                             }
 
                             char c = (char)('a' + (vk - 0x41));
                             _candidateManager.AppendChar(c, _settings);
                             _candidateBar.PositionNearCaretOrCursor(_settings.AutoFollowCaret);
-                            return (IntPtr)1; // Chặn ký tự gốc
+                            return (IntPtr)1;
                         }
 
                         return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
                     }
 
-                    // B. Khi ĐÃ CÓ buffer pinyin (đang soạn thảo)
-                    // B1: Tiếp tục gõ chữ cái A-Z
+                    // B. When composing Pinyin
+                    // B1: Append characters a-z
                     if (vk >= 0x41 && vk <= 0x5A)
                     {
                         char c = (char)('a' + (vk - 0x41));
@@ -137,13 +134,13 @@ namespace UniPinyin
                         return (IntPtr)1;
                     }
 
-                    // B2: Nhấn số 1-9 để chọn từ
+                    // B2: Numbers 1-9 to select candidates
                     int digit = -1;
-                    if (vk >= 0x31 && vk <= 0x39) // Top row '1' - '9'
+                    if (vk >= 0x31 && vk <= 0x39)
                     {
                         digit = (int)(vk - 0x30);
                     }
-                    else if (vk >= 0x61 && vk <= 0x69) // NumPad '1' - '9'
+                    else if (vk >= 0x61 && vk <= 0x69)
                     {
                         digit = (int)(vk - 0x60);
                     }
@@ -157,15 +154,14 @@ namespace UniPinyin
                         }
                     }
 
-                    // B3: Phím Space (chọn từ đầu tiên nếu bật SpaceSelectFirst)
-                    if (vk == 0x20) // VK_SPACE
+                    // B3: Space key (commit 1st candidate or fallback raw + space)
+                    if (vk == 0x20)
                     {
                         if (_settings.SpaceSelectFirst)
                         {
                             bool committed = _candidateManager.CommitCandidateByIndex(0, _settings.CandidateCount);
                             if (!committed)
                             {
-                                // Fallback: Nếu chưa có gợi ý hoặc từ điển không khớp, xuất chuỗi pinyin gốc + dấu cách
                                 _candidateManager.CommitRaw();
                                 NativeMethods.SendUnicodeString(" ");
                             }
@@ -179,16 +175,16 @@ namespace UniPinyin
                         return (IntPtr)1;
                     }
 
-                    // B4: Phím Enter (chấp nhận chữ thô Pinyin tiếng Anh)
-                    if (vk == 0x0D) // VK_RETURN
+                    // B4: Enter key (commit raw pinyin)
+                    if (vk == 0x0D)
                     {
                         _candidateManager.CommitRaw();
                         _candidateBar.HideBar();
                         return (IntPtr)1;
                     }
 
-                    // B5: Phím Backspace (xóa 1 ký tự pinyin)
-                    if (vk == 0x08) // VK_BACK
+                    // B5: Backspace (remove last char)
+                    if (vk == 0x08)
                     {
                         _candidateManager.RemoveLastChar(_settings);
                         if (!_candidateManager.HasBuffer)
@@ -198,29 +194,29 @@ namespace UniPinyin
                         return (IntPtr)1;
                     }
 
-                    // B6: Phím Escape (hủy bỏ)
-                    if (vk == 0x1B) // VK_ESCAPE
+                    // B6: Escape (cancel)
+                    if (vk == 0x1B)
                     {
                         _candidateManager.Clear();
                         _candidateBar.HideBar();
                         return (IntPtr)1;
                     }
 
-                    // B7: Chuyển trang: PageDown hoặc dấu chấm '.' hoặc '>'
-                    if (vk == 0x22 || vk == 0xBE) // VK_NEXT (PageDown) hoặc VK_OEM_PERIOD
+                    // B7: PageDown / '.' / '>'
+                    if (vk == 0x22 || vk == 0xBE)
                     {
                         _candidateManager.NextPage(_settings.CandidateCount);
                         return (IntPtr)1;
                     }
 
-                    // B8: Lùi trang: PageUp hoặc dấu phẩy ',' hoặc '<'
-                    if (vk == 0x21 || vk == 0xBC) // VK_PRIOR (PageUp) hoặc VK_OEM_COMMA
+                    // B8: PageUp / ',' / '<'
+                    if (vk == 0x21 || vk == 0xBC)
                     {
                         _candidateManager.PrevPage(_settings.CandidateCount);
                         return (IntPtr)1;
                     }
 
-                    // B9: Các phím khác (dấu câu, mũi tên...): Cam kết từ đầu tiên và để phím đi qua
+                    // B9: Other keys: commit 1st candidate and let key through
                     _candidateManager.CommitCandidateByIndex(0, _settings.CandidateCount);
                     _candidateBar.HideBar();
                     return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
@@ -232,32 +228,29 @@ namespace UniPinyin
 
         private bool CheckHotkeyToggle(uint vk)
         {
-            // 0: Ctrl + Shift
-            if (_settings.HotkeyMode == 0)
+            if (_settings.HotkeyMode == 0) // Ctrl + Shift
             {
-                if (vk == 0x10) // Nhấn Shift
+                if (vk == 0x10)
                 {
-                    return (NativeMethods.GetAsyncKeyState(0x11) & 0x8000) != 0; // Khi đang giữ Ctrl
+                    return (NativeMethods.GetAsyncKeyState(0x11) & 0x8000) != 0;
                 }
-                if (vk == 0x11) // Nhấn Ctrl
+                if (vk == 0x11)
                 {
-                    return (NativeMethods.GetAsyncKeyState(0x10) & 0x8000) != 0; // Khi đang giữ Shift
-                }
-            }
-            // 1: Ctrl + Space
-            else if (_settings.HotkeyMode == 1)
-            {
-                if (vk == 0x20) // Nhấn Space
-                {
-                    return (NativeMethods.GetAsyncKeyState(0x11) & 0x8000) != 0; // Khi đang giữ Ctrl
+                    return (NativeMethods.GetAsyncKeyState(0x10) & 0x8000) != 0;
                 }
             }
-            // 2: Alt + Z
-            else if (_settings.HotkeyMode == 2)
+            else if (_settings.HotkeyMode == 1) // Ctrl + Space
             {
-                if (vk == 0x5A) // Nhấn 'Z'
+                if (vk == 0x20)
                 {
-                    return (NativeMethods.GetAsyncKeyState(0x12) & 0x8000) != 0; // Khi đang giữ Alt
+                    return (NativeMethods.GetAsyncKeyState(0x11) & 0x8000) != 0;
+                }
+            }
+            else if (_settings.HotkeyMode == 2) // Alt + Z
+            {
+                if (vk == 0x5A)
+                {
+                    return (NativeMethods.GetAsyncKeyState(0x12) & 0x8000) != 0;
                 }
             }
 

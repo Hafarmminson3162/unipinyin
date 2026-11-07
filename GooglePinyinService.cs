@@ -15,7 +15,6 @@ namespace UniPinyin
 
         static GooglePinyinService()
         {
-            // Cho phép giao thức TLS 1.2
             try
             {
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls;
@@ -37,7 +36,7 @@ namespace UniPinyin
             }
 
             string itc = isSimplified ? "zh-t-i0-pinyin" : "zh-hant-t-i0-pinyin";
-            string url = string.Format("https://inputtools.google.com/request?text={0}&itc={1}&num={2}&cp=0&cs=1&ie=utf-8&oe=utf-8&app=unipinyin",
+            string url = string.Format("https://inputtools.google.com/request?text={0}&itc={1}&num={2}&cp=0&cs=1&ie=utf-8&oe=utf-8&app=unipinyin-en",
                 Uri.EscapeDataString(pinyin),
                 itc,
                 count);
@@ -46,9 +45,9 @@ namespace UniPinyin
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
                 request.Method = "GET";
-                request.Timeout = 1500; // 1.5s timeout để gõ phím không bị lag
+                request.Timeout = 1500;
                 request.ReadWriteTimeout = 1500;
-                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) UniPinyin/1.0";
+                request.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) UniPinyin-EN/1.0";
 
                 using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 using (Stream stream = response.GetResponseStream())
@@ -70,7 +69,7 @@ namespace UniPinyin
             }
             catch
             {
-                // Khi offline hoặc lỗi mạng, trả về rỗng để local dictionary xử lý
+                // Fallback to local dictionary when offline
             }
 
             return new List<string>();
@@ -81,8 +80,6 @@ namespace UniPinyin
             List<string> list = new List<string>();
             try
             {
-                // Cấu trúc trả về từ Google:
-                // ["SUCCESS",[["nihao",["你好","拟好","您好","妮好","尼豪"],[],{"annotation":["ni hao",...]}]]]
                 object[] root = Serializer.DeserializeObject(json) as object[];
                 if (root != null && root.Length > 1 && "SUCCESS".Equals(root[0]))
                 {
@@ -111,9 +108,7 @@ namespace UniPinyin
                     }
                 }
             }
-            catch
-            {
-            }
+            catch { }
             return list;
         }
     }

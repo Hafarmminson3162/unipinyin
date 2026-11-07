@@ -14,14 +14,16 @@ namespace UniPinyin
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
 
-            // Đảm bảo chỉ 1 phiên bản UniPinyin chạy cùng một lúc (giống UniKey)
             bool isNewInstance;
-            _appMutex = new Mutex(true, "UniPinyin_App_SingleInstance_Mutex_v1", out isNewInstance);
+            _appMutex = new Mutex(true, "UniPinyin_EN_SingleInstance_Mutex_v1", out isNewInstance);
 
             if (!isNewInstance)
             {
-                MessageBox.Show("UniPinyin đang chạy ở khay hệ thống (góc dưới bên phải màn hình)!\nHãy nhấp chuột vào biểu tượng [中] hoặc [EN] ở khay đồng hồ để sử dụng.",
-                    "UniPinyin Đang Chạy", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(
+                    "UniPinyin is already running in the system tray (bottom-right corner of your screen)!\nClick the [中] or [EN] icon near the clock to use it.",
+                    "UniPinyin Already Running",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
                 return;
             }
 
@@ -30,7 +32,6 @@ namespace UniPinyin
                 Settings settings = Settings.Load();
                 TrayContext trayContext = new TrayContext(settings);
 
-                // Nếu có cờ --settings hoặc lần đầu chạy, mở bảng điều khiển
                 bool openSettings = false;
                 if (args != null)
                 {
@@ -54,8 +55,11 @@ namespace UniPinyin
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Có lỗi xảy ra trong quá trình khởi động UniPinyin:\n" + ex.Message,
-                    "Lỗi Khởi Động", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    "An error occurred while launching UniPinyin:\n" + ex.Message,
+                    "Startup Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {

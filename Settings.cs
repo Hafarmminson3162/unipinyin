@@ -7,17 +7,16 @@ namespace UniPinyin
 {
     public class Settings
     {
-        public bool IsEnabled = true;           // Bật/tắt gõ tiếng Trung (true: Trung, false: Anh)
-        public bool IsSimplified = true;        // Giản thể (true) / Phồn thể (false)
-        public int HotkeyMode = 2;              // Mặc định: 2 = Alt+Z (0: Ctrl+Shift, 1: Ctrl+Space, 2: Alt+Z)
-        public int CandidateCount = 5;          // 5 hoặc 9 gợi ý
-        public bool UseGoogleOnline = true;     // Ưu tiên Google Cloud Suggestion
-        public bool SpaceSelectFirst = true;    // Phím Space chọn từ số 1
-        public bool AutoFollowCaret = true;     // Tự động bám theo con trỏ chuột/caret
-        public bool StartWithWindows = false;   // Khởi động cùng Windows
-        public bool ShowNotifications = true;   // Hiện thông báo chuyển chế độ
-        public bool PlaySoundOnToggle = true;   // Âm báo bíp khi đổi ngôn ngữ
-        public string UiLanguage = "vi";        // Ngôn ngữ giao diện ("vi" hoặc "en")
+        public bool IsEnabled = true;           // Chinese input ON (true) / Direct English (false)
+        public bool IsSimplified = true;        // Simplified (true) / Traditional (false)
+        public int HotkeyMode = 2;              // Default: 2 = Alt+Z (0: Ctrl+Shift, 1: Ctrl+Space, 2: Alt+Z)
+        public int CandidateCount = 5;          // 5 or 9 candidates
+        public bool UseGoogleOnline = true;     // Google Cloud Suggestions enabled
+        public bool SpaceSelectFirst = true;    // Space key commits 1st candidate
+        public bool AutoFollowCaret = true;     // Candidate bar follows caret/cursor
+        public bool StartWithWindows = false;   // Launch at Windows startup
+        public bool ShowNotifications = true;   // Show balloon notifications
+        public bool PlaySoundOnToggle = true;   // Play sound beep on language toggle
 
         private static string ConfigPath
         {
@@ -28,7 +27,7 @@ namespace UniPinyin
                 {
                     try { Directory.CreateDirectory(dir); } catch { }
                 }
-                return Path.Combine(dir, "config.ini");
+                return Path.Combine(dir, "config-en.ini");
             }
         }
 
@@ -60,7 +59,6 @@ namespace UniPinyin
                             case "StartWithWindows": s.StartWithWindows = bool.Parse(val); break;
                             case "ShowNotifications": s.ShowNotifications = bool.Parse(val); break;
                             case "PlaySoundOnToggle": s.PlaySoundOnToggle = bool.Parse(val); break;
-                            case "UiLanguage": s.UiLanguage = val.ToLowerInvariant(); break;
                         }
                     }
                 }
@@ -75,7 +73,7 @@ namespace UniPinyin
             {
                 using (StreamWriter sw = new StreamWriter(ConfigPath, false, System.Text.Encoding.UTF8))
                 {
-                    sw.WriteLine("# Cấu hình UniPinyin");
+                    sw.WriteLine("# UniPinyin Configuration (English Edition)");
                     sw.WriteLine("IsEnabled=" + IsEnabled);
                     sw.WriteLine("IsSimplified=" + IsSimplified);
                     sw.WriteLine("HotkeyMode=" + HotkeyMode);
@@ -86,10 +84,8 @@ namespace UniPinyin
                     sw.WriteLine("StartWithWindows=" + StartWithWindows);
                     sw.WriteLine("ShowNotifications=" + ShowNotifications);
                     sw.WriteLine("PlaySoundOnToggle=" + PlaySoundOnToggle);
-                    sw.WriteLine("UiLanguage=" + UiLanguage);
                 }
 
-                // Cập nhật Registry AutoStart
                 SetAutoStart(StartWithWindows);
             }
             catch { }
@@ -105,11 +101,11 @@ namespace UniPinyin
                     {
                         if (enable)
                         {
-                            key.SetValue("UniPinyin", Application.ExecutablePath);
+                            key.SetValue("UniPinyin-EN", Application.ExecutablePath);
                         }
                         else
                         {
-                            key.DeleteValue("UniPinyin", false);
+                            key.DeleteValue("UniPinyin-EN", false);
                         }
                     }
                 }

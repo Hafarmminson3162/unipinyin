@@ -27,7 +27,7 @@ namespace UniPinyin
 
         public void AppendChar(char c, Settings settings)
         {
-            if (_buffer.Length >= 40) return; // Giới hạn độ dài pinyin
+            if (_buffer.Length >= 40) return;
             bool handled;
             _buffer = PinyinToneHelper.ProcessKey(_buffer, c, out handled);
             _pageIndex = 0;
@@ -114,13 +114,13 @@ namespace UniPinyin
             string currentQuery = PinyinToneHelper.StripTones(_buffer);
             int reqCount = Math.Max(10, settings.CandidateCount * 2);
 
-            // 1. Lấy kết quả tức thì từ từ điển cục bộ
+            // 1. Instant local dictionary lookup
             List<string> localList = LocalDictionary.Lookup(currentQuery, settings.IsSimplified, reqCount);
             _allCandidates = new List<string>(localList);
 
             NotifyUpdate(settings.CandidateCount);
 
-            // 2. Nếu bật gợi ý Google Online, gửi truy vấn bất đồng bộ
+            // 2. Asynchronous Google Input Tools suggestion
             if (settings.UseGoogleOnline)
             {
                 _cts = new CancellationTokenSource();
@@ -130,7 +130,6 @@ namespace UniPinyin
                 {
                     try
                     {
-                        // Debounce nhẹ 50ms để tránh spam request khi gõ nhanh
                         Thread.Sleep(50);
                         if (token.IsCancellationRequested) return;
 
@@ -140,7 +139,6 @@ namespace UniPinyin
 
                         if (googleList != null && googleList.Count > 0)
                         {
-                            // Hợp nhất: Ưu tiên gợi ý từ Google, giữ lại các từ chưa có
                             List<string> merged = new List<string>(googleList);
                             foreach (var item in localList)
                             {

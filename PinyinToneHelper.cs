@@ -62,10 +62,10 @@ namespace UniPinyin
                 }
             }
 
-            // 1. Quy tắc âm 'ü' (w hoặc u+w):
+            // 1. Rule for 'ü' (w or u+w):
             if (c == 'w')
             {
-                // Nếu ký tự cuối là 'ü', nhấn lại 'w' để hoàn tác thành "uw" (giống UniKey)
+                // If previous char is 'ü', typing 'w' again gives "uw"
                 if (currentBuffer.EndsWith("\u00fc", StringComparison.OrdinalIgnoreCase))
                 {
                     handled = true;
@@ -88,11 +88,7 @@ namespace UniPinyin
                 }
             }
 
-            // 2. Quy tắc bỏ dấu thanh điệu Pinyin kiểu TELEX:
-            // x: Thanh 1 (Thanh ngang / macaron)
-            // s: Thanh 2 (Dấu sắc)
-            // r: Thanh 3 (Dấu hỏi / caron)
-            // f: Thanh 4 (Dấu huyền / grave)
+            // 2. Rule for tones: x=1, s=2, r=3, f=4
             int tone = 0;
             if (c == 'x') tone = 1;
             else if (c == 's') tone = 2;
@@ -110,7 +106,7 @@ namespace UniPinyin
 
                     if (currentTone == tone)
                     {
-                        // Nhấn lại cùng phím dấu: Hủy dấu và xuất chữ gốc (Repeat key undo giống UniKey)
+                        // Repeat key undo: revert tone AND append original key
                         handled = true;
                         StringBuilder sb = new StringBuilder(currentBuffer);
                         sb[targetIdx] = baseVowel;
@@ -119,7 +115,7 @@ namespace UniPinyin
                     }
                     else
                     {
-                        // Thêm dấu mới hoặc đổi sang dấu khác
+                        // Apply or change tone
                         handled = true;
                         char newChar = ApplyTone(baseVowel, tone);
                         StringBuilder sb = new StringBuilder(currentBuffer);
@@ -143,7 +139,6 @@ namespace UniPinyin
             bool seenVowel = false;
             bool seenConsonant = false;
 
-            // Quét ngược tìm nguyên âm của âm tiết hiện tại
             for (int i = start; i >= 0; i--)
             {
                 char ch = buffer[i];
@@ -153,7 +148,6 @@ namespace UniPinyin
                 {
                     if (seenConsonant)
                     {
-                        // Đã chạm sang âm tiết trước đó
                         break;
                     }
                     seenVowel = true;
@@ -178,10 +172,6 @@ namespace UniPinyin
                 }
             }
 
-            // Quy tắc đặt dấu thanh Pinyin quốc tế:
-            // 1. Ưu tiên 'a', rồi đến 'e'
-            // 2. Trong vần 'ou' đặt ở 'o'
-            // 3. Các trường hợp khác đặt ở nguyên âm cuối
             if (aIdx >= 0) return aIdx;
             if (eIdx >= 0) return eIdx;
             if (ouIdx >= 0) return ouIdx;
@@ -247,7 +237,7 @@ namespace UniPinyin
             foreach (char c in pinyin)
             {
                 char baseV = GetBaseVowel(c);
-                if (baseV == '\u00fc') sb.Append('v'); // Chuyển ü thành v để tra từ điển & Google API
+                if (baseV == '\u00fc') sb.Append('v'); // Convert ü to v for dictionary & Google API lookup
                 else sb.Append(baseV);
             }
             return sb.ToString();

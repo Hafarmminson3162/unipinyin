@@ -111,7 +111,6 @@ namespace UniPinyin
             public MOUSEKEYBDHARDWAREINPUT u;
         }
 
-        // Bắt buộc phải có MOUSEINPUT trong Union để struct INPUT có kích thước chuẩn 40 bytes trên Win64 (hoặc 28 bytes trên Win32)
         [StructLayout(LayoutKind.Explicit)]
         public struct MOUSEKEYBDHARDWAREINPUT
         {

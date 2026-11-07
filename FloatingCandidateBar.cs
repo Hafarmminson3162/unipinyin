@@ -26,7 +26,7 @@ namespace UniPinyin
             this.StartPosition = FormStartPosition.Manual;
             this.ShowInTaskbar = false;
             this.TopMost = true;
-            this.BackColor = Color.FromArgb(32, 33, 36); // Google Dark Theme
+            this.BackColor = Color.FromArgb(32, 33, 36);
             this.DoubleBuffered = true;
             this.Height = 65;
             this.Width = 320;
@@ -72,7 +72,6 @@ namespace UniPinyin
                 }
             }
 
-            // Tính toán kích thước thanh hiển thị linh hoạt
             using (Graphics g = this.CreateGraphics())
             {
                 float totalWidth = 30f;
@@ -117,7 +116,6 @@ namespace UniPinyin
 
             if (autoFollow)
             {
-                // Thử tìm tọa độ Caret soạn thảo
                 IntPtr hFore = NativeMethods.GetForegroundWindow();
                 uint threadId = NativeMethods.GetWindowThreadProcessId(hFore, IntPtr.Zero);
                 NativeMethods.GUITHREADINFO gui = new NativeMethods.GUITHREADINFO();
@@ -134,7 +132,6 @@ namespace UniPinyin
                     target = new Point(pt.X, pt.Y);
                 }
 
-                // Nếu không lấy được Caret, dùng con trỏ chuột
                 if (target.X == 0 && target.Y == 0)
                 {
                     NativeMethods.POINT mousePt;
@@ -146,21 +143,18 @@ namespace UniPinyin
             }
             else
             {
-                // Cố định góc dưới bên phải màn hình
                 Rectangle workArea = Screen.PrimaryScreen.WorkingArea;
                 target = new Point(workArea.Right - this.Width - 30, workArea.Bottom - this.Height - 40);
             }
 
-            // Đảm bảo không tràn màn hình
             Screen screen = Screen.FromPoint(target);
             Rectangle bounds = screen.WorkingArea;
 
             if (target.X + this.Width > bounds.Right) target.X = bounds.Right - this.Width - 10;
             if (target.X < bounds.Left) target.X = bounds.Left + 10;
-            if (target.Y + this.Height > bounds.Bottom) target.Y = target.Y - this.Height - 30; // Hiện phía trên nếu sát mép dưới
+            if (target.Y + this.Height > bounds.Bottom) target.Y = target.Y - this.Height - 30;
             if (target.Y < bounds.Top) target.Y = bounds.Top + 10;
 
-            // Dùng SetWindowPos với SWP_NOACTIVATE để tuyệt đối không cướp focus ứng dụng đang gõ
             NativeMethods.SetWindowPos(this.Handle, NativeMethods.HWND_TOPMOST, target.X, target.Y, this.Width, this.Height, NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW);
         }
 
@@ -183,7 +177,6 @@ namespace UniPinyin
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
-            // Khung viền và nền
             Rectangle rect = new Rectangle(0, 0, this.Width - 1, this.Height - 1);
             using (SolidBrush bgBrush = new SolidBrush(Color.FromArgb(32, 33, 36)))
             using (Pen borderPen = new Pen(Color.FromArgb(70, 75, 85), 1.5f))
@@ -192,9 +185,9 @@ namespace UniPinyin
                 g.DrawRectangle(borderPen, rect);
             }
 
-            // Dòng 1: Pinyin
+            // Line 1: Pinyin
             float currentX = 12f;
-            using (SolidBrush pinyinBrush = new SolidBrush(Color.FromArgb(128, 216, 255))) // Light Cyan
+            using (SolidBrush pinyinBrush = new SolidBrush(Color.FromArgb(128, 216, 255)))
             using (SolidBrush labelBrush = new SolidBrush(Color.FromArgb(160, 160, 160)))
             {
                 g.DrawString("Pinyin:", _fontNumber, labelBrush, currentX, 6f);
@@ -204,7 +197,7 @@ namespace UniPinyin
                 g.DrawString(_pinyin, _fontPinyin, pinyinBrush, currentX, 4f);
             }
 
-            // Hiển thị số trang ở góc phải dòng 1
+            // Page count
             int totalPages = Math.Max(1, (int)Math.Ceiling((double)_totalCandidates / _pageSize));
             string pageText = string.Format("[{0}/{1}]", _pageIndex + 1, totalPages);
             SizeF pageSizeVal = g.MeasureString(pageText, _fontPage);
@@ -213,23 +206,23 @@ namespace UniPinyin
                 g.DrawString(pageText, _fontPage, pageBrush, this.Width - pageSizeVal.Width - 10f, 6f);
             }
 
-            // Đường kẻ mờ phân cách
+            // Separator
             using (Pen sepPen = new Pen(Color.FromArgb(50, 54, 62), 1f))
             {
                 g.DrawLine(sepPen, 8, 28, this.Width - 8, 28);
             }
 
-            // Dòng 2: Danh sách gợi ý từ
+            // Line 2: Candidates list
             float candidateX = 12f;
             float candidateY = 32f;
 
-            using (SolidBrush numBrush = new SolidBrush(Color.FromArgb(255, 183, 77)))      // Cam/Vàng
-            using (SolidBrush textBrush = new SolidBrush(Color.White))                       // Trắng
+            using (SolidBrush numBrush = new SolidBrush(Color.FromArgb(255, 183, 77)))
+            using (SolidBrush textBrush = new SolidBrush(Color.White))
             using (SolidBrush hotkeyHintBrush = new SolidBrush(Color.FromArgb(140, 140, 140)))
             {
                 if (_candidates.Count == 0)
                 {
-                    g.DrawString("(Đang tìm kiếm gợi ý...)", _fontPage, hotkeyHintBrush, candidateX, candidateY + 4f);
+                    g.DrawString("(Searching suggestions...)", _fontPage, hotkeyHintBrush, candidateX, candidateY + 4f);
                 }
                 else
                 {
@@ -238,12 +231,10 @@ namespace UniPinyin
                         string num = string.Format("{0}.", i + 1);
                         string cand = _candidates[i];
 
-                        // Vẽ số thứ tự
                         g.DrawString(num, _fontNumber, numBrush, candidateX, candidateY + 3f);
                         SizeF numSize = g.MeasureString(num, _fontNumber);
                         candidateX += numSize.Width + 1f;
 
-                        // Vẽ chữ tiếng Trung
                         g.DrawString(cand, _fontCandidate, textBrush, candidateX, candidateY);
                         SizeF candSize = g.MeasureString(cand, _fontCandidate);
                         candidateX += candSize.Width + 14f;
