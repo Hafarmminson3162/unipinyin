@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniPinyin Web - Trình Gõ Tiếng Trung Trực Tuyến Từ Google</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-sub: #5f6368;
+            --border: #dadce0;
+            --candidate-bg: #202124;
+            --candidate-text: #ffffff;
+            --candidate-num: #fbbc04;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            background: var(--primary);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .brand-title {
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            background: #e6f4ea;
+            color: #137333;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34a853;
+        }
+
+        main {
+            flex: 1;
+            max-width: 960px;
+            width: 100%;
+            margin: 24px auto;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .toolbar {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tool-label {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--text-sub);
+        }
+
+        select, button {
+            padding: 7px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .editor-container {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            padding: 10px 18px;
+            background: #f1f3f4;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        #editor {
+            width: 100%;
+            height: 260px;
+            padding: 18px;
+            border: none;
+            outline: none;
+            resize: vertical;
+            font-size: 20px;
+            line-height: 1.6;
+            color: var(--text-main);
+            background: #fff;
+        }
+
+        /* Thanh gợi ý Pinyin */
+        .candidate-bar {
+            background: var(--candidate-bg);
+            color: var(--candidate-text);
+            padding: 10px 16px;
+            border-top: 1px solid #3c4043;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .pinyin-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .pinyin-label {
+            color: #8ab4f8;
+            font-weight: 600;
+        }
+
+        .candidates-list {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .candidate-item {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: #2b2d30;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 17px;
+            transition: background 0.15s;
+        }
+
+        .candidate-item:hover, .candidate-item.active {
+            background: #3c4043;
+            outline: 1px solid #8ab4f8;
+        }
+
+        .cand-num {
+            font-size: 12px;
+            color: var(--candidate-num);
+            font-weight: bold;
+        }
+
+        .cand-char {
+            color: #fff;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .guide-panel {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+        }
+
+        .guide-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            font-size: 13.5px;
+        }
+
+        .guide-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #e8eaed;
+        }
+
+        .guide-card strong {
+            display: block;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 16px;
+            color: var(--text-sub);
+            font-size: 12.5px;
+            border-top: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #323232;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <img src="app_icon.png" class="brand-icon" style="object-fit: contain; background: transparent; border-radius: 8px;" alt="UniPinyin Panda" onerror="this.outerHTML='<div class=\'brand-icon\'>中</div>'">
+            <div>
+                <div class="brand-title">UniPinyin Web</div>
+                <div class="brand-sub" id="txtBrandSub">Bộ gõ tiếng Trung trực tuyến nguồn Google Input Tools (Bàn phím US)</div>
+            </div>
+        </div>
+        <div class="header-controls">
+            <select id="webLangSelect" style="padding: 5px 10px; border-radius: 6px; font-size: 13px; font-weight: 500;">
+                <option value="vi">🇻🇳 Tiếng Việt</option>
+                <option value="en">🇬🇧 English</option>
+            </select>
+            <div class="badge-status">
+                <span class="dot"></span>
+                <span id="apiStatusText">Google API Đang Hoạt Động</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="tool-group">
+                <span class="tool-label" id="lblCharMode">Chế độ chữ:</span>
+                <select id="charMode">
+                    <option value="zh-t-i0-pinyin" id="optSimp">Chữ Giản thể (Simplified - 简体)</option>
+                    <option value="zh-hant-t-i0-pinyin" id="optTrad">Chữ Phồn thể (Traditional - 繁體)</option>
+                </select>
+            </div>
+
+            <div class="tool-group">
+                <span class="tool-label" id="lblCandNum">Số gợi ý:</span>
+                <select id="candNum">
+                    <option value="5" id="opt5">5 từ</option>
+                    <option value="10" id="opt10" selected>10 từ</option>
+                </select>
+            </div>
+
+            <div class="tool-group">
+                <button id="btnCopy" class="btn-primary">Sao Chép Văn Bản</button>
+                <button id="btnClear">Xóa Hết</button>
+            </div>
+        </div>
+
+        <!-- Editor Box -->
+        <div class="editor-container">
+            <div class="editor-header">
+                <span id="txtEditorTip">Soạn thảo: Gõ Pinyin (VD: <b>nihao</b>, <b>xiexie</b>, <b>zhongguo</b>) rồi bấm <b>Space</b> hoặc <b>1-9</b></span>
+                <span id="charCount">0 ký tự</span>
+            </div>
+            <textarea id="editor" placeholder="Nhấp vào đây và gõ thử Pinyin bằng bàn phím thường (US)... Ví dụ: nihao, wo ai ni, zhongwen"></textarea>
+            
+            <!-- Floating / Bottom Candidate Bar -->
+            <div class="candidate-bar" id="candidateBar" style="display: none;">
+                <div class="pinyin-preview">
+                    <span><span id="txtPinyinPrefix">Pinyin đang gõ:</span> <strong id="pinyinText" class="pinyin-label">nihao</strong></span>
+                    <span id="txtPinyinHint" style="font-size: 12px; color: #9aa0a6;">Bấm Phím Cách (Space) để chọn từ #1 | Bấm 1-9 để chọn số</span>
+                </div>
+                <div class="candidates-list" id="candidatesList">
+                    <!-- Sẽ render bằng Javascript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Hướng dẫn nhanh -->
+        <div class="guide-panel">
+            <div class="guide-title" id="txtGuideTitle">Mẹo & Hướng dẫn gõ Pinyin nhanh</div>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <strong id="g1Title">1. Gõ từ ghép liên tục</strong>
+                    <span id="g1Desc">Gõ nguyên cụm liền nhau để Google gợi ý chính xác nhất. Ví dụ: <code>nihao</code> (你好), <code>xiexie</code> (谢谢), <code>duibuqi</code> (对不起).</span>
+                </div>
+                <div class="guide-card">
+                    <strong id="g2Title">2. Chọn từ bằng Space / Số</strong>
+                    <span id="g2Desc">Nhấn phím <b>Cách (Space)</b> để chọn ngay từ đầu tiên. Hoặc bấm trực tiếp các phím số <b>1, 2, 3...</b> trên bàn phím.</span>
+                </div>
+                <div class="guide-card">
+                    <strong id="g3Title">3. Gõ âm ü bằng w hoặc u+w</strong>
+                    <span id="g3Desc">Gõ âm ü (có hai chấm trên đầu) bằng phím <b>w</b> hoặc <b>u+w</b> (hoặc <b>v</b>). Ví dụ: <code>lw</code> (绿/lü), <code>nuw</code> (女/nü).</span>
+                </div>
+                <div class="guide-card">
+                    <strong id="g4Title">4. Dấu Pinyin & Phím Enter</strong>
+                    <span id="g4Desc">Bỏ dấu thanh: <b>x</b> (thanh 1), <b>s</b> (thanh 2), <b>r</b> (thanh 3), <b>f</b> (thanh 4). Bấm <b>Enter</b> để xuất nguyên chuỗi Pinyin có dấu (VD: <code>nǐhǎo</code>, <code>lǜ</code>).</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer id="txtFooter">
+        UniPinyin • Tương tự UniKey • Gõ tiếng Trung từ bàn phím US • Nguồn gợi ý từ Google Input Tools API
+    </footer>
+
+    <div class="toast" id="toast">Đã sao chép vào bộ nhớ tạm!</div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const candidateBar = document.getElementById('candidateBar');
+        const pinyinText = document.getElementById('pinyinText');
+        const candidatesList = document.getElementById('candidatesList');
+        const charMode = document.getElementById('charMode');
+        const candNum = document.getElementById('candNum');
+        const btnCopy = document.getElementById('btnCopy');
+        const btnClear = document.getElementById('btnClear');
+        const charCount = document.getElementById('charCount');
+        const toast = document.getElementById('toast');
+        const webLangSelect = document.getElementById('webLangSelect');
+
+        // Bảng đa ngôn ngữ (Vietnamese / English)
+        const i18n = {
+            vi: {
+                brandSub: "Bộ gõ tiếng Trung trực tuyến nguồn Google Input Tools (Bàn phím US)",
+                apiStatus: "Google API Đang Hoạt Động",
+                charMode: "Chế độ chữ:",
+                simp: "Chữ Giản thể (Simplified - 简体)",
+                trad: "Chữ Phồn thể (Traditional - 繁體)",
+                candNum: "Số gợi ý:",
+                opt5: "5 từ",
+                opt10: "10 từ",
+                btnCopy: "Sao Chép Văn Bản",
+                btnClear: "Xóa Hết",
+                editorTip: "Soạn thảo: Gõ Pinyin (VD: <b>nihao</b>, <b>xiexie</b>, <b>zhongguo</b>) rồi bấm <b>Space</b> hoặc <b>1-9</b>",
+                charUnit: " ký tự",
+                placeholder: "Nhấp vào đây và gõ thử Pinyin bằng bàn phím thường (US)... Ví dụ: nihao, wo ai ni, zhongwen",
+                pinyinPrefix: "Pinyin đang gõ:",
+                pinyinHint: "Bấm Phím Cách (Space) để chọn từ #1 | Bấm 1-9 để chọn số",
+                guideTitle: "Mẹo & Hướng dẫn gõ Pinyin nhanh",
+                g1Title: "1. Gõ từ ghép liên tục",
+                g1Desc: "Gõ nguyên cụm liền nhau để Google gợi ý chính xác nhất. Ví dụ: nihao (你好), xiexie (谢谢), duibuqi (对不起).",
+                g2Title: "2. Chọn từ bằng Space / Số",
+                g2Desc: "Nhấn phím Cách (Space) để chọn ngay từ đầu tiên. Hoặc bấm trực tiếp các phím số 1, 2, 3... trên bàn phím.",
+                g3Title: "3. Gõ âm ü bằng w hoặc u+w",
+                g3Desc: "Gõ âm ü (có hai chấm trên đầu) bằng phím <b>w</b> hoặc <b>u+w</b> (hoặc <b>v</b>). Ví dụ: <code>lw</code> (绿/lü), <code>nuw</code> (女/nü).",
+                g4Title: "4. Dấu Pinyin & Phím Enter",
+                g4Desc: "Bỏ dấu thanh: <b>x</b> (thanh 1), <b>s</b> (thanh 2), <b>r</b> (thanh 3), <b>f</b> (thanh 4). Bấm <b>Enter</b> để xuất nguyên chuỗi Pinyin có dấu (VD: <code>nǐhǎo</code>, <code>lǜ</code>).",
+                footer: "UniPinyin • Tương tự UniKey • Gõ tiếng Trung từ bàn phím US • Nguồn gợi ý từ Google Input Tools API",
+                toastCopy: "Đã sao chép văn bản tiếng Trung vào bộ nhớ tạm!",
+                confirmClear: "Bạn có chắc chắn muốn xóa toàn bộ nội dung?"
+            },
+            en: {
+                brandSub: "Online Chinese IME powered by Google Input Tools (US Keyboard)",
+                apiStatus: "Google API Active",
+                charMode: "Character Mode:",
+                simp: "Simplified Chinese (简体) - Mainland",
+                trad: "Traditional Chinese (繁體) - Taiwan/HK",
+                candNum: "Suggestions:",
+                opt5: "5 words",
+                opt10: "10 words",
+                btnCopy: "Copy Text",
+                btnClear: "Clear All",
+                editorTip: "Editor: Type Pinyin (e.g. <b>nihao</b>, <b>xiexie</b>, <b>zhongguo</b>) then press <b>Space</b> or <b>1-9</b>",
+                charUnit: " characters",
+                placeholder: "Click here and start typing Chinese using Pinyin... e.g.: nihao, wo ai ni, zhongwen",
+                pinyinPrefix: "Current Pinyin:",
+                pinyinHint: "Press Space to select #1 | Press 1-9 to select candidates | Press Enter for Pinyin",
+                guideTitle: "Pinyin Quick Tips & Typing Guide",
+                g1Title: "1. Type compound words",
+                g1Desc: "Type full phrases together for the best Google predictions. E.g.: nihao (你好), xiexie (谢谢), duibuqi (对不起).",
+                g2Title: "2. Select via Space / Digits",
+                g2Desc: "Press Space to pick candidate #1 immediately. Or press number keys 1, 2, 3... to pick corresponding words.",
+                g3Title: "3. Type 'ü' using 'w' or 'u+w'",
+                g3Desc: "For syllables with umlaut ü (like 绿, 女), use 'w' or 'u+w' (or 'v'). E.g.: <code>lw</code> (绿/lü), <code>nuw</code> (女/nü).",
+                g4Title: "4. Pinyin Tones & Enter Key",
+                g4Desc: "Tone accents: <b>x</b> (tone 1), <b>s</b> (tone 2), <b>r</b> (tone 3), <b>f</b> (tone 4). Press <b>Enter</b> to confirm toned Pinyin (e.g. <code>nǐhǎo</code>, <code>lǜ</code>).",
+                footer: "UniPinyin • UniKey Style • Type Chinese from US Keyboard • Powered by Google Input Tools API",
+                toastCopy: "Copied Chinese text to clipboard!",
+                confirmClear: "Are you sure you want to clear all text?"
+            }
+        };
+
+        function setUiLanguage(lang) {
+            const t = i18n[lang] || i18n.vi;
+            document.getElementById('txtBrandSub').textContent = t.brandSub;
+            document.getElementById('apiStatusText').textContent = t.apiStatus;
+            document.getElementById('lblCharMode').textContent = t.charMode;
+            document.getElementById('optSimp').textContent = t.simp;
+            document.getElementById('optTrad').textContent = t.trad;
+            document.getElementById('lblCandNum').textContent = t.candNum;
+            document.getElementById('opt5').textContent = t.opt5;
+            document.getElementById('opt10').textContent = t.opt10;
+            btnCopy.textContent = t.btnCopy;
+            btnClear.textContent = t.btnClear;
+            document.getElementById('txtEditorTip').innerHTML = t.editorTip;
+            editor.placeholder = t.placeholder;
+            document.getElementById('txtPinyinPrefix').textContent = t.pinyinPrefix;
+            document.getElementById('txtPinyinHint').textContent = t.pinyinHint;
+            document.getElementById('txtGuideTitle').textContent = t.guideTitle;
+            document.getElementById('g1Title').textContent = t.g1Title;
+            document.getElementById('g1Desc').innerHTML = t.g1Desc;
+            document.getElementById('g2Title').textContent = t.g2Title;
+            document.getElementById('g2Desc').innerHTML = t.g2Desc;
+            document.getElementById('g3Title').textContent = t.g3Title;
+            document.getElementById('g3Desc').innerHTML = t.g3Desc;
+            document.getElementById('g4Title').textContent = t.g4Title;
+            document.getElementById('g4Desc').innerHTML = t.g4Desc;
+            document.getElementById('txtFooter').textContent = t.footer;
+            updateCharCount();
+        }
+
+        webLangSelect.addEventListener('change', () => {
+            setUiLanguage(webLangSelect.value);
+        });
+
+        function updateCharCount() {
+            const lang = webLangSelect.value;
+            const unit = i18n[lang] ? i18n[lang].charUnit : " ký tự";
+            charCount.textContent = editor.value.length + unit;
+        }
+
+        let pinyinBuffer = "";
+        let candidates = [];
+        let debounceTimer = null;
+
+        const Tone1 = ['ā', 'ē', 'ī', 'ō', 'ū', 'ǖ'];
+        const Tone2 = ['á', 'é', 'í', 'ó', 'ú', 'ǘ'];
+        const Tone3 = ['ǎ', 'ě', 'ǐ', 'ǒ', 'ǔ', 'ǚ'];
+        const Tone4 = ['à', 'è', 'ì', 'ò', 'ù', 'ǜ'];
+        const BaseV = ['a', 'e', 'i', 'o', 'u', 'ü'];
+
+        function isVowel(c) {
+            c = c.toLowerCase();
+            return ['a','e','i','o','u','ü'].includes(c);
+        }
+
+        function getBaseVowel(c) {
+            c = c.toLowerCase();
+            for (let i = 0; i < 6; i++) {
+                if (c === Tone1[i] || c === Tone2[i] || c === Tone3[i] || c === Tone4[i] || c === BaseV[i]) {
+                    return BaseV[i];
+                }
+            }
+            return c;
+        }
+
+        function getCurrentTone(c) {
+            c = c.toLowerCase();
+            for (let i = 0; i < 6; i++) {
+                if (c === Tone1[i]) return 1;
+                if (c === Tone2[i]) return 2;
+                if (c === Tone3[i]) return 3;
+                if (c === Tone4[i]) return 4;
+            }
+            return 0;
+        }
+
+        function applyTone(baseV, tone) {
+            baseV = baseV.toLowerCase();
+            const idx = BaseV.indexOf(baseV);
+            if (idx === -1) return baseV;
+            if (tone === 1) return Tone1[idx];
+            if (tone === 2) return Tone2[idx];
+            if (tone === 3) return Tone3[idx];
+            if (tone === 4) return Tone4[idx];
+            return BaseV[idx];
+        }
+
+        function stripTones(pinyin) {
+            if (!pinyin) return "";
+            let res = "";
+            for (let ch of pinyin) {
+                let bv = getBaseVowel(ch);
+                if (bv === 'ü') res += 'v';
+                else res += bv;
+            }
+            return res;
+        }
+
+        function findVowelIndexForTone(buffer) {
+            let lastVowel = -1, aIdx = -1, eIdx = -1, ouIdx = -1;
+            let seenVowel = false, seenConsonant = false;
+            for (let i = buffer.length - 1; i >= 0; i--) {
+                let ch = buffer[i];
+                let baseCh = getBaseVowel(ch);
+                if (isVowel(baseCh)) {
+                    if (seenConsonant) break;
+                    seenVowel = true;
+                    if (lastVowel === -1) lastVowel = i;
+                    if (baseCh === 'a') aIdx = i;
+                    if (baseCh === 'e') eIdx = i;
+                    if (baseCh === 'o' && i + 1 < buffer.length && getBaseVowel(buffer[i + 1]) === 'u') {
+                        ouIdx = i;
+                    }
+                } else {
+                    if (seenVowel) seenConsonant = true;
+                    if (ch === ' ' || ch === "'") break;
+                }
+            }
+            if (aIdx >= 0) return aIdx;
+            if (eIdx >= 0) return eIdx;
+            if (ouIdx >= 0) return ouIdx;
+            return lastVowel;
+        }
+
+        function processPinyinKey(currentBuffer, c) {
+            c = c.toLowerCase();
+            if (!currentBuffer) return c;
+
+            // Smart continuation
+            let lastIdx = currentBuffer.length - 1;
+            let lastChar = currentBuffer[lastIdx];
+            let lastTone = getCurrentTone(lastChar);
+            if (lastTone > 0) {
+                let revert = false;
+                let consonant = ' ';
+                if (lastTone === 1 && (c === 'i' || c === 'u')) { revert = true; consonant = 'x'; }
+                else if (lastTone === 2 && (c === 'h' || isVowel(c))) { revert = true; consonant = 's'; }
+                else if (lastTone === 3 && isVowel(c)) { revert = true; consonant = 'r'; }
+                else if (lastTone === 4 && isVowel(c)) { revert = true; consonant = 'f'; }
+
+                if (revert) {
+                    let baseV = getBaseVowel(lastChar);
+                    return currentBuffer.slice(0, lastIdx) + baseV + consonant + c;
+                }
+            }
+
+            // 1. Rule for 'ü'
+            if (c === 'w') {
+                if (currentBuffer.endsWith('ü')) {
+                    return currentBuffer.slice(0, -1) + 'uw';
+                }
+                if (currentBuffer.endsWith('u')) {
+                    return currentBuffer.slice(0, -1) + 'ü';
+                }
+                if (currentBuffer.endsWith('l') || currentBuffer.endsWith('n')) {
+                    return currentBuffer + 'ü';
+                }
+            }
+
+            // 2. Rule for tones: x=1, s=2, r=3, f=4
+            let tone = 0;
+            if (c === 'x') tone = 1;
+            else if (c === 's') tone = 2;
+            else if (c === 'r') tone = 3;
+            else if (c === 'f') tone = 4;
+
+            if (tone > 0) {
+                let targetIdx = findVowelIndexForTone(currentBuffer);
+                if (targetIdx >= 0) {
+                    let targetChar = currentBuffer[targetIdx];
+                    let currentTone = getCurrentTone(targetChar);
+                    let baseVowel = getBaseVowel(targetChar);
+
+                    if (currentTone === tone) {
+                        return currentBuffer.slice(0, targetIdx) + baseVowel + currentBuffer.slice(targetIdx + 1) + c;
+                    } else {
+                        let newChar = applyTone(baseVowel, tone);
+                        return currentBuffer.slice(0, targetIdx) + newChar + currentBuffer.slice(targetIdx + 1);
+                    }
+                }
+            }
+
+            return currentBuffer + c;
+        }
+
+        editor.addEventListener('input', updateCharCount);
+
+        // Xử lý phím gõ Pinyin
+        editor.addEventListener('keydown', (e) => {
+            const key = e.key;
+
+            if (pinyinBuffer.length > 0) {
+                // Nhấn Space: Chọn từ số 1
+                if (key === ' ' || key === 'Spacebar') {
+                    e.preventDefault();
+                    if (candidates.length > 0) {
+                        commitCandidate(candidates[0]);
+                    } else {
+                        commitCandidate(pinyinBuffer);
+                    }
+                    return;
+                }
+
+                // Nhấn số 1-9: Chọn ứng viên theo số
+                if (/^[1-9]$/.test(key)) {
+                    const idx = parseInt(key) - 1;
+                    if (idx < candidates.length) {
+                        e.preventDefault();
+                        commitCandidate(candidates[idx]);
+                        return;
+                    }
+                }
+
+                // Nhấn Enter: Xác nhận lấy chuỗi Pinyin có dấu
+                if (key === 'Enter') {
+                    e.preventDefault();
+                    commitCandidate(pinyinBuffer);
+                    return;
+                }
+
+                // Nhấn Backspace: Xóa 1 chữ cái Pinyin
+                if (key === 'Backspace') {
+                    e.preventDefault();
+                    pinyinBuffer = pinyinBuffer.slice(0, -1);
+                    if (pinyinBuffer.length === 0) {
+                        hideCandidates();
+                    } else {
+                        queryGooglePinyin(pinyinBuffer);
+                    }
+                    return;
+                }
+
+                // Nhấn Esc: Hủy bỏ
+                if (key === 'Escape') {
+                    e.preventDefault();
+                    hideCandidates();
+                    return;
+                }
+
+                // Tiếp tục gõ chữ cái a-z
+                if (/^[a-zA-Z]$/.test(key)) {
+                    e.preventDefault();
+                    pinyinBuffer = processPinyinKey(pinyinBuffer, key);
+                    queryGooglePinyin(pinyinBuffer);
+                    return;
+                }
+            } else {
+                if (/^[a-z]$/.test(key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    e.preventDefault();
+                    pinyinBuffer = key.toLowerCase();
+                    queryGooglePinyin(pinyinBuffer);
+                    return;
+                }
+            }
+        });
+
+        function queryGooglePinyin(pinyin) {
+            pinyinText.textContent = pinyin;
+            candidateBar.style.display = 'flex';
+
+            const stripped = stripTones(pinyin);
+
+            // 1. Nạp ngay lập tức ứng viên từ từ điển cục bộ để ấn Space là hiện chữ ngay không cần chờ mạng
+            fallbackLocal(stripped);
+
+            // 2. Truy vấn bất đồng bộ từ Google Input Tools API
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const itc = charMode.value;
+                const num = candNum.value;
+                const url = `https://inputtools.google.com/request?text=${encodeURIComponent(stripped)}&itc=${itc}&num=${num}&cp=0&cs=1&ie=utf-8&oe=utf-8&app=unipinyin`;
+
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1]) {
+                            candidates = data[1][0][1];
+                            renderCandidates();
+                        }
+                    })
+                    .catch(() => {
+                        // Đã có từ điển cục bộ phục vụ
+                    });
+            }, 60);
+        }
+
+        const localMap = {
+            "nihao": ["你好", "拟好", "您好"],
+            "ninhao": ["您好"],
+            "xiexie": ["谢谢", "写写"],
+            "zaijian": ["再见"],
+            "zhongwen": ["中文"],
+            "zhongguo": ["中国"],
+            "hanyu": ["汉语"],
+            "yuenan": ["越南"],
+            "duibuqi": ["对不起"],
+            "meiguanxi": ["没关系"],
+            "weishenme": ["为什么"],
+            "zenmeyang": ["怎么样"],
+            "dajia": ["大家"],
+            "women": ["我们"],
+            "nimen": ["你们"],
+            "tamen": ["他们", "她们"],
+            "laoshi": ["老师"],
+            "xuesheng": ["学生"],
+            "pengyou": ["朋友"],
+            "gongzuo": ["工作"],
+            "xuexi": ["学习"],
+            "shouji": ["手机"],
+            "diannao": ["电脑"],
+            "chifan": ["吃饭"],
+            "hecha": ["喝茶"],
+            "xihuan": ["喜欢"],
+            "gaoxing": ["高兴"],
+            "kuaile": ["快乐"],
+            "shengrikuaile": ["生日快乐"],
+            "xinniankuaile": ["新年快乐"],
+            "wo": ["我"],
+            "ni": ["你", "拟"],
+            "ta": ["他", "她", "它"],
+            "shi": ["是", "时", "事", "十"],
+            "bu": ["不", "部", "步"],
+            "de": ["的", "得", "地"],
+            "you": ["有", "又", "友"],
+            "zai": ["在", "再"],
+            "shuo": ["说"],
+            "kan": ["看"],
+            "ting": ["听"],
+            "xie": ["写"],
+            "chi": ["吃"],
+            "he": ["喝"],
+            "mai": ["买", "卖"],
+            "hao": ["好"],
+            "duo": ["多"],
+            "shao": ["少"],
+            "da": ["大"],
+            "xiao": ["小"]
+        };
+
+        function fallbackLocal(pinyin) {
+            if (localMap[pinyin]) {
+                candidates = localMap[pinyin];
+            } else {
+                candidates = [pinyin];
+            }
+            renderCandidates();
+        }
+
+        function renderCandidates() {
+            candidatesList.innerHTML = '';
+            candidates.forEach((cand, index) => {
+                const item = document.createElement('div');
+                item.className = 'candidate-item' + (index === 0 ? ' active' : '');
+                item.innerHTML = `<span class="cand-num">${index + 1}.</span><span class="cand-char">${cand}</span>`;
+                item.addEventListener('click', () => {
+                    commitCandidate(cand);
+                    editor.focus();
+                });
+                candidatesList.appendChild(item);
+            });
+        }
+
+        function commitCandidate(cand) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const text = editor.value;
+
+            editor.value = text.substring(0, start) + cand + text.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + cand.length;
+            updateCharCount();
+
+            hideCandidates();
+        }
+
+        function hideCandidates() {
+            pinyinBuffer = "";
+            candidates = [];
+            candidateBar.style.display = 'none';
+        }
+
+        btnCopy.addEventListener('click', () => {
+            if (!editor.value) return;
+            const lang = webLangSelect.value;
+            const msg = i18n[lang] ? i18n[lang].toastCopy : "Đã sao chép vào bộ nhớ tạm!";
+            navigator.clipboard.writeText(editor.value).then(() => {
+                showToast(msg);
+            });
+        });
+
+        btnClear.addEventListener('click', () => {
+            const lang = webLangSelect.value;
+            const confirmMsg = i18n[lang] ? i18n[lang].confirmClear : "Bạn có chắc chắn muốn xóa toàn bộ nội dung?";
+            if (editor.value && confirm(confirmMsg)) {
+                editor.value = "";
+                updateCharCount();
+                hideCandidates();
+            }
+        });
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>

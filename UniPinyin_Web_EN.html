@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UniPinyin Web - Online Chinese Pinyin IME powered by Google</title>
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-hover: #1557b0;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --text-main: #202124;
+            --text-sub: #5f6368;
+            --border: #dadce0;
+            --candidate-bg: #202124;
+            --candidate-text: #ffffff;
+            --candidate-num: #fbbc04;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #ffffff;
+            border-bottom: 1px solid var(--border);
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            background: var(--primary);
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .brand-title {
+            font-size: 19px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .brand-sub {
+            font-size: 12px;
+            color: var(--text-sub);
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .badge-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            background: #e6f4ea;
+            color: #137333;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #34a853;
+        }
+
+        main {
+            flex: 1;
+            max-width: 960px;
+            width: 100%;
+            margin: 24px auto;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .toolbar {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 18px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .tool-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .tool-label {
+            font-size: 13.5px;
+            font-weight: 500;
+            color: var(--text-sub);
+        }
+
+        select, button {
+            padding: 7px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: #fff;
+            font-size: 13.5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            font-weight: 500;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .editor-container {
+            position: relative;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            padding: 10px 18px;
+            background: #f1f3f4;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            color: var(--text-sub);
+        }
+
+        #editor {
+            width: 100%;
+            height: 260px;
+            padding: 18px;
+            border: none;
+            outline: none;
+            resize: vertical;
+            font-size: 20px;
+            line-height: 1.6;
+            color: var(--text-main);
+            background: #fff;
+        }
+
+        .candidate-bar {
+            background: var(--candidate-bg);
+            color: var(--candidate-text);
+            padding: 10px 16px;
+            border-top: 1px solid #3c4043;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .pinyin-preview {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+
+        .pinyin-label {
+            color: #8ab4f8;
+            font-weight: 600;
+        }
+
+        .candidates-list {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .candidate-item {
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 6px;
+            background: #2b2d30;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 17px;
+            transition: background 0.15s;
+        }
+
+        .candidate-item:hover, .candidate-item.active {
+            background: #3c4043;
+            outline: 1px solid #8ab4f8;
+        }
+
+        .cand-num {
+            font-size: 12px;
+            color: var(--candidate-num);
+            font-weight: bold;
+        }
+
+        .cand-char {
+            color: #fff;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        .guide-panel {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 18px 20px;
+        }
+
+        .guide-title {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-main);
+        }
+
+        .guide-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 14px;
+            font-size: 13.5px;
+        }
+
+        .guide-card {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #e8eaed;
+        }
+
+        .guide-card strong {
+            display: block;
+            color: var(--primary);
+            margin-bottom: 6px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 16px;
+            color: var(--text-sub);
+            font-size: 12.5px;
+            border-top: 1px solid var(--border);
+            background: #fff;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #323232;
+            color: #fff;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-size: 13.5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="brand">
+            <img src="app_icon.png" class="brand-icon" style="object-fit: contain; background: transparent; border-radius: 8px;" alt="UniPinyin Panda" onerror="this.outerHTML='<div class=\'brand-icon\'>中</div>'">
+            <div>
+                <div class="brand-title">UniPinyin Web (English Edition)</div>
+                <div class="brand-sub">Online Chinese IME powered by Google Input Tools (US Keyboard)</div>
+            </div>
+        </div>
+        <div class="header-controls">
+            <div class="badge-status">
+                <span class="dot"></span>
+                <span>Google API Active</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <!-- Toolbar -->
+        <div class="toolbar">
+            <div class="tool-group">
+                <span class="tool-label">Character Mode:</span>
+                <select id="charMode">
+                    <option value="zh-t-i0-pinyin">Simplified Chinese (简体) - Mainland Standard</option>
+                    <option value="zh-hant-t-i0-pinyin">Traditional Chinese (繁體) - Taiwan / HK</option>
+                </select>
+            </div>
+
+            <div class="tool-group">
+                <span class="tool-label">Suggestions:</span>
+                <select id="candNum">
+                    <option value="5">5 words</option>
+                    <option value="10" selected>10 words</option>
+                </select>
+            </div>
+
+            <div class="tool-group">
+                <button id="btnCopy" class="btn-primary">Copy Text</button>
+                <button id="btnClear">Clear All</button>
+            </div>
+        </div>
+
+        <!-- Editor Box -->
+        <div class="editor-container">
+            <div class="editor-header">
+                <span>Editor: Type Pinyin (e.g. <b>nihao</b>, <b>xiexie</b>, <b>zhongguo</b>) then press <b>Space</b> or <b>1-9</b></span>
+                <span id="charCount">0 characters</span>
+            </div>
+            <textarea id="editor" placeholder="Click here and start typing Chinese using Pinyin... e.g.: nihao, wo ai ni, zhongwen"></textarea>
+            
+            <div class="candidate-bar" id="candidateBar" style="display: none;">
+                <div class="pinyin-preview">
+                    <span>Current Pinyin: <strong id="pinyinText" class="pinyin-label">nihao</strong></span>
+                    <span style="font-size: 12px; color: #9aa0a6;">Press Space to select #1 | Press 1-9 to select candidates</span>
+                </div>
+                <div class="candidates-list" id="candidatesList"></div>
+            </div>
+        </div>
+
+        <!-- Quick Tips & Guide -->
+        <div class="guide-panel">
+            <div class="guide-title">Pinyin Quick Tips & Typing Guide</div>
+            <div class="guide-grid">
+                <div class="guide-card">
+                    <strong>1. Type compound words</strong>
+                    Type full phrases together for the best Google predictions. E.g.: <code>nihao</code> (你好), <code>xiexie</code> (谢谢), <code>duibuqi</code> (对不起).
+                </div>
+                <div class="guide-card">
+                    <strong>2. Select via Space / Digits</strong>
+                    Press <b>Spacebar</b> to pick candidate #1 immediately. Or press number keys <b>1, 2, 3...</b> to pick corresponding words.
+                </div>
+                <div class="guide-card">
+                    <strong>3. Type 'ü' using 'w' or 'u+w'</strong>
+                    For umlaut ü (like 绿, 女), type <b>w</b> or <b>u+w</b> (or <b>v</b>). E.g.: <code>lw</code> (绿/lü), <code>nuw</code> (女/nü).
+                </div>
+                <div class="guide-card">
+                    <strong>4. Pinyin Tones & Enter Key</strong>
+                    Tone accents: <b>x</b> (tone 1), <b>s</b> (tone 2), <b>r</b> (tone 3), <b>f</b> (tone 4). Press <b>Enter</b> to confirm toned Pinyin text (e.g. <code>nǐhǎo</code>, <code>lǜ</code>).
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        UniPinyin • UniKey Style • Type Chinese from US Keyboard • Powered by Google Input Tools API
+    </footer>
+
+    <div class="toast" id="toast">Copied Chinese text to clipboard!</div>
+
+    <script>
+        const editor = document.getElementById('editor');
+        const candidateBar = document.getElementById('candidateBar');
+        const pinyinText = document.getElementById('pinyinText');
+        const candidatesList = document.getElementById('candidatesList');
+        const charMode = document.getElementById('charMode');
+        const candNum = document.getElementById('candNum');
+        const btnCopy = document.getElementById('btnCopy');
+        const btnClear = document.getElementById('btnClear');
+        const charCount = document.getElementById('charCount');
+        const toast = document.getElementById('toast');
+
+        let pinyinBuffer = "";
+        let candidates = [];
+        let debounceTimer = null;
+
+        const Tone1 = ['ā', 'ē', 'ī', 'ō', 'ū', 'ǖ'];
+        const Tone2 = ['á', 'é', 'í', 'ó', 'ú', 'ǘ'];
+        const Tone3 = ['ǎ', 'ě', 'ǐ', 'ǒ', 'ǔ', 'ǚ'];
+        const Tone4 = ['à', 'è', 'ì', 'ò', 'ù', 'ǜ'];
+        const BaseV = ['a', 'e', 'i', 'o', 'u', 'ü'];
+
+        function isVowel(c) {
+            c = c.toLowerCase();
+            return ['a','e','i','o','u','ü'].includes(c);
+        }
+
+        function getBaseVowel(c) {
+            c = c.toLowerCase();
+            for (let i = 0; i < 6; i++) {
+                if (c === Tone1[i] || c === Tone2[i] || c === Tone3[i] || c === Tone4[i] || c === BaseV[i]) {
+                    return BaseV[i];
+                }
+            }
+            return c;
+        }
+
+        function getCurrentTone(c) {
+            c = c.toLowerCase();
+            for (let i = 0; i < 6; i++) {
+                if (c === Tone1[i]) return 1;
+                if (c === Tone2[i]) return 2;
+                if (c === Tone3[i]) return 3;
+                if (c === Tone4[i]) return 4;
+            }
+            return 0;
+        }
+
+        function applyTone(baseV, tone) {
+            baseV = baseV.toLowerCase();
+            const idx = BaseV.indexOf(baseV);
+            if (idx === -1) return baseV;
+            if (tone === 1) return Tone1[idx];
+            if (tone === 2) return Tone2[idx];
+            if (tone === 3) return Tone3[idx];
+            if (tone === 4) return Tone4[idx];
+            return BaseV[idx];
+        }
+
+        function stripTones(pinyin) {
+            if (!pinyin) return "";
+            let res = "";
+            for (let ch of pinyin) {
+                let bv = getBaseVowel(ch);
+                if (bv === 'ü') res += 'v';
+                else res += bv;
+            }
+            return res;
+        }
+
+        function findVowelIndexForTone(buffer) {
+            let lastVowel = -1, aIdx = -1, eIdx = -1, ouIdx = -1;
+            let seenVowel = false, seenConsonant = false;
+            for (let i = buffer.length - 1; i >= 0; i--) {
+                let ch = buffer[i];
+                let baseCh = getBaseVowel(ch);
+                if (isVowel(baseCh)) {
+                    if (seenConsonant) break;
+                    seenVowel = true;
+                    if (lastVowel === -1) lastVowel = i;
+                    if (baseCh === 'a') aIdx = i;
+                    if (baseCh === 'e') eIdx = i;
+                    if (baseCh === 'o' && i + 1 < buffer.length && getBaseVowel(buffer[i + 1]) === 'u') {
+                        ouIdx = i;
+                    }
+                } else {
+                    if (seenVowel) seenConsonant = true;
+                    if (ch === ' ' || ch === "'") break;
+                }
+            }
+            if (aIdx >= 0) return aIdx;
+            if (eIdx >= 0) return eIdx;
+            if (ouIdx >= 0) return ouIdx;
+            return lastVowel;
+        }
+
+        function processPinyinKey(currentBuffer, c) {
+            c = c.toLowerCase();
+            if (!currentBuffer) return c;
+
+            // Smart continuation
+            let lastIdx = currentBuffer.length - 1;
+            let lastChar = currentBuffer[lastIdx];
+            let lastTone = getCurrentTone(lastChar);
+            if (lastTone > 0) {
+                let revert = false;
+                let consonant = ' ';
+                if (lastTone === 1 && (c === 'i' || c === 'u')) { revert = true; consonant = 'x'; }
+                else if (lastTone === 2 && (c === 'h' || isVowel(c))) { revert = true; consonant = 's'; }
+                else if (lastTone === 3 && isVowel(c)) { revert = true; consonant = 'r'; }
+                else if (lastTone === 4 && isVowel(c)) { revert = true; consonant = 'f'; }
+
+                if (revert) {
+                    let baseV = getBaseVowel(lastChar);
+                    return currentBuffer.slice(0, lastIdx) + baseV + consonant + c;
+                }
+            }
+
+            // 1. Rule for 'ü'
+            if (c === 'w') {
+                if (currentBuffer.endsWith('ü')) {
+                    return currentBuffer.slice(0, -1) + 'uw';
+                }
+                if (currentBuffer.endsWith('u')) {
+                    return currentBuffer.slice(0, -1) + 'ü';
+                }
+                if (currentBuffer.endsWith('l') || currentBuffer.endsWith('n')) {
+                    return currentBuffer + 'ü';
+                }
+            }
+
+            // 2. Rule for tones: x=1, s=2, r=3, f=4
+            let tone = 0;
+            if (c === 'x') tone = 1;
+            else if (c === 's') tone = 2;
+            else if (c === 'r') tone = 3;
+            else if (c === 'f') tone = 4;
+
+            if (tone > 0) {
+                let targetIdx = findVowelIndexForTone(currentBuffer);
+                if (targetIdx >= 0) {
+                    let targetChar = currentBuffer[targetIdx];
+                    let currentTone = getCurrentTone(targetChar);
+                    let baseVowel = getBaseVowel(targetChar);
+
+                    if (currentTone === tone) {
+                        return currentBuffer.slice(0, targetIdx) + baseVowel + currentBuffer.slice(targetIdx + 1) + c;
+                    } else {
+                        let newChar = applyTone(baseVowel, tone);
+                        return currentBuffer.slice(0, targetIdx) + newChar + currentBuffer.slice(targetIdx + 1);
+                    }
+                }
+            }
+
+            return currentBuffer + c;
+        }
+
+        editor.addEventListener('input', () => {
+            charCount.textContent = editor.value.length + " characters";
+        });
+
+        editor.addEventListener('keydown', (e) => {
+            const key = e.key;
+
+            if (pinyinBuffer.length > 0) {
+                if (key === ' ' || key === 'Spacebar') {
+                    e.preventDefault();
+                    if (candidates.length > 0) {
+                        commitCandidate(candidates[0]);
+                    } else {
+                        commitCandidate(pinyinBuffer);
+                    }
+                    return;
+                }
+
+                if (/^[1-9]$/.test(key)) {
+                    const idx = parseInt(key) - 1;
+                    if (idx < candidates.length) {
+                        e.preventDefault();
+                        commitCandidate(candidates[idx]);
+                        return;
+                    }
+                }
+
+                if (key === 'Enter') {
+                    e.preventDefault();
+                    commitCandidate(pinyinBuffer);
+                    return;
+                }
+
+                if (key === 'Backspace') {
+                    e.preventDefault();
+                    pinyinBuffer = pinyinBuffer.slice(0, -1);
+                    if (pinyinBuffer.length === 0) {
+                        hideCandidates();
+                    } else {
+                        queryGooglePinyin(pinyinBuffer);
+                    }
+                    return;
+                }
+
+                if (key === 'Escape') {
+                    e.preventDefault();
+                    hideCandidates();
+                    return;
+                }
+
+                if (/^[a-zA-Z]$/.test(key)) {
+                    e.preventDefault();
+                    pinyinBuffer = processPinyinKey(pinyinBuffer, key);
+                    queryGooglePinyin(pinyinBuffer);
+                    return;
+                }
+            } else {
+                if (/^[a-z]$/.test(key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
+                    e.preventDefault();
+                    pinyinBuffer = key.toLowerCase();
+                    queryGooglePinyin(pinyinBuffer);
+                    return;
+                }
+            }
+        });
+
+        function queryGooglePinyin(pinyin) {
+            pinyinText.textContent = pinyin;
+            candidateBar.style.display = 'flex';
+
+            const stripped = stripTones(pinyin);
+
+            fallbackLocal(stripped);
+
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                const itc = charMode.value;
+                const num = candNum.value;
+                const url = `https://inputtools.google.com/request?text=${encodeURIComponent(stripped)}&itc=${itc}&num=${num}&cp=0&cs=1&ie=utf-8&oe=utf-8&app=unipinyin-en`;
+
+                fetch(url)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data[0] === 'SUCCESS' && data[1] && data[1][0] && data[1][0][1]) {
+                            candidates = data[1][0][1];
+                            renderCandidates();
+                        }
+                    })
+                    .catch(() => {});
+            }, 60);
+        }
+
+        const localMap = {
+            "nihao": ["你好", "拟好", "您好"],
+            "ninhao": ["您好"],
+            "xiexie": ["谢谢", "写写"],
+            "zaijian": ["再见"],
+            "zhongwen": ["中文"],
+            "zhongguo": ["中国"],
+            "hanyu": ["汉语"],
+            "duibuqi": ["对不起"],
+            "meiguanxi": ["没关系"],
+            "weishenme": ["为什么"],
+            "zenmeyang": ["怎么样"],
+            "dajia": ["大家"],
+            "women": ["我们"],
+            "nimen": ["你们"],
+            "tamen": ["他们", "她们"],
+            "laoshi": ["老师"],
+            "xuesheng": ["学生"],
+            "pengyou": ["朋友"],
+            "gongzuo": ["工作"],
+            "xuexi": ["学习"],
+            "shouji": ["手机"],
+            "diannao": ["电脑"],
+            "chifan": ["吃饭"],
+            "hecha": ["喝茶"],
+            "xihuan": ["喜欢"],
+            "gaoxing": ["高兴"],
+            "kuaile": ["快乐"],
+            "shengrikuaile": ["生日快乐"],
+            "xinniankuaile": ["新年快乐"],
+            "wo": ["我"],
+            "ni": ["你", "拟"],
+            "ta": ["他", "她", "它"],
+            "shi": ["是", "时", "事", "十"],
+            "bu": ["不", "部", "步"],
+            "de": ["的", "得", "地"],
+            "you": ["有", "又", "友"],
+            "zai": ["在", "再"],
+            "shuo": ["说"],
+            "kan": ["看"],
+            "ting": ["听"],
+            "xie": ["写"],
+            "chi": ["吃"],
+            "he": ["喝"],
+            "mai": ["买", "卖"],
+            "hao": ["好"],
+            "duo": ["多"],
+            "shao": ["少"],
+            "da": ["大"],
+            "xiao": ["小"]
+        };
+
+        function fallbackLocal(pinyin) {
+            if (localMap[pinyin]) {
+                candidates = localMap[pinyin];
+            } else {
+                candidates = [pinyin];
+            }
+            renderCandidates();
+        }
+
+        function renderCandidates() {
+            candidatesList.innerHTML = '';
+            candidates.forEach((cand, index) => {
+                const item = document.createElement('div');
+                item.className = 'candidate-item' + (index === 0 ? ' active' : '');
+                item.innerHTML = `<span class="cand-num">${index + 1}.</span><span class="cand-char">${cand}</span>`;
+                item.addEventListener('click', () => {
+                    commitCandidate(cand);
+                    editor.focus();
+                });
+                candidatesList.appendChild(item);
+            });
+        }
+
+        function commitCandidate(cand) {
+            const start = editor.selectionStart;
+            const end = editor.selectionEnd;
+            const text = editor.value;
+
+            editor.value = text.substring(0, start) + cand + text.substring(end);
+            editor.selectionStart = editor.selectionEnd = start + cand.length;
+            charCount.textContent = editor.value.length + " characters";
+
+            hideCandidates();
+        }
+
+        function hideCandidates() {
+            pinyinBuffer = "";
+            candidates = [];
+            candidateBar.style.display = 'none';
+        }
+
+        btnCopy.addEventListener('click', () => {
+            if (!editor.value) return;
+            navigator.clipboard.writeText(editor.value).then(() => {
+                showToast("Copied Chinese text to clipboard!");
+            });
+        });
+
+        btnClear.addEventListener('click', () => {
+            if (editor.value && confirm("Are you sure you want to clear all text?")) {
+                editor.value = "";
+                charCount.textContent = "0 characters";
+                hideCandidates();
+            }
+        });
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+    </script>
+</body>
+</html>
