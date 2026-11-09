@@ -373,6 +373,20 @@ namespace UniPinyin
                 return true;
             }
 
+            // D. Hỗ trợ các trình duyệt web hiện đại, ứng dụng Electron & văn phòng
+            // (Chromium/Chrome/Edge/Brave/Opera, Firefox, Word/Office, VS Code, Discord, Slack...)
+            // Do các ứng dụng này vẽ UI bằng Skia/DirectWrite riêng không dùng Win32 Caret HWND.
+            if (foreCls.StartsWith("Chrome_WidgetWin_") ||
+                foreCls == "MozillaWindowClass" ||
+                foreCls == "OpusApp" || foreCls == "XLMAIN" || foreCls == "PPTFrameClass" ||
+                foreCls == "Framework::CFrame" ||
+                foreCls == "SunAwtFrame" ||
+                foreCls.StartsWith("Qt5QWindow") || foreCls.StartsWith("Qt6QWindow") ||
+                foreCls == "Notepad++" || foreCls == "PX_WINDOW_CLASS")
+            {
+                return true;
+            }
+
             return false;
         }
     }

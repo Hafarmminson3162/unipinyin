@@ -372,6 +372,20 @@ namespace UniPinyin
                 return true;
             }
 
+            // D. Support modern web browsers, Electron apps & office suites
+            // (Chromium/Chrome/Edge/Brave/Opera, Firefox, Word/Office, VS Code, Discord, Slack...)
+            // Since these apps render UI using custom engines (Skia/DirectWrite) without standard Win32 HWND carets.
+            if (foreCls.StartsWith("Chrome_WidgetWin_") ||
+                foreCls == "MozillaWindowClass" ||
+                foreCls == "OpusApp" || foreCls == "XLMAIN" || foreCls == "PPTFrameClass" ||
+                foreCls == "Framework::CFrame" ||
+                foreCls == "SunAwtFrame" ||
+                foreCls.StartsWith("Qt5QWindow") || foreCls.StartsWith("Qt6QWindow") ||
+                foreCls == "Notepad++" || foreCls == "PX_WINDOW_CLASS")
+            {
+                return true;
+            }
+
             return false;
         }
     }
