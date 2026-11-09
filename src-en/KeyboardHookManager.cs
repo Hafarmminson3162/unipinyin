@@ -13,6 +13,7 @@ namespace UniPinyin
         private readonly Settings _settings;
         private readonly CandidateManager _candidateManager;
         private readonly FloatingCandidateBar _candidateBar;
+        private IntPtr _lastForegroundWindow = IntPtr.Zero;
 
         public event Action<bool> OnLanguageToggled;
 
@@ -67,6 +68,18 @@ namespace UniPinyin
                 {
                     uint vk = kb.vkCode;
 
+                    // Automatically clear buffer if user switched to another window
+                    IntPtr curFore = NativeMethods.GetForegroundWindow();
+                    if (curFore != _lastForegroundWindow)
+                    {
+                        _lastForegroundWindow = curFore;
+                        if (_candidateManager.HasBuffer)
+                        {
+                            _candidateManager.Clear();
+                            _candidateBar.HideBar();
+                        }
+                    }
+
                     // 1. Check Toggle Hotkey
                     if (CheckHotkeyToggle(vk))
                     {
@@ -111,6 +124,13 @@ namespace UniPinyin
                         if (vk >= 0x41 && vk <= 0x5A)
                         {
                             if (isShift || isCapsLock)
+                            {
+                                return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
+                            }
+
+                            // Only activate suggestions when in an active typing context (blinking cursor / caret)
+                            // If on desktop, games, file explorer list, or viewing pages without typing, do not intercept
+                            if (!NativeMethods.IsTypingContextActive())
                             {
                                 return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
                             }

@@ -13,6 +13,7 @@ namespace UniPinyin
         private readonly Settings _settings;
         private readonly CandidateManager _candidateManager;
         private readonly FloatingCandidateBar _candidateBar;
+        private IntPtr _lastForegroundWindow = IntPtr.Zero;
 
         public event Action<bool> OnLanguageToggled;
 
@@ -68,6 +69,18 @@ namespace UniPinyin
                 {
                     uint vk = kb.vkCode;
 
+                    // Tự động xóa buffer nếu người dùng chuyển đổi sang cửa sổ khác
+                    IntPtr curFore = NativeMethods.GetForegroundWindow();
+                    if (curFore != _lastForegroundWindow)
+                    {
+                        _lastForegroundWindow = curFore;
+                        if (_candidateManager.HasBuffer)
+                        {
+                            _candidateManager.Clear();
+                            _candidateBar.HideBar();
+                        }
+                    }
+
                     // 1. Kiểm tra phím tắt chuyển đổi chế độ (Hotkey Toggle)
                     if (CheckHotkeyToggle(vk))
                     {
@@ -115,6 +128,13 @@ namespace UniPinyin
                             if (isShift || isCapsLock)
                             {
                                 // Người dùng muốn gõ chữ hoa tiếng Anh
+                                return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
+                            }
+
+                            // QUAN TRỌNG: Chỉ cho phép gợi ý khi đang nhập chữ (khi có con trỏ đánh máy nhấp nháy / caret)
+                            // Nếu đang ở desktop, game, duyệt file explorer, lướt web không bấm vào ô nhập... thì không hoạt động
+                            if (!NativeMethods.IsTypingContextActive())
+                            {
                                 return NativeMethods.CallNextHookEx(_hookId, nCode, wParam, lParam);
                             }
 

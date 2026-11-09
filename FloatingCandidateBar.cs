@@ -131,23 +131,12 @@ namespace UniPinyin
 
             if (autoFollow)
             {
-                IntPtr hFore = NativeMethods.GetForegroundWindow();
-                uint threadId = NativeMethods.GetWindowThreadProcessId(hFore, IntPtr.Zero);
-                NativeMethods.GUITHREADINFO gui = new NativeMethods.GUITHREADINFO();
-                gui.cbSize = (uint)System.Runtime.InteropServices.Marshal.SizeOf(gui);
-
-                if (NativeMethods.GetGUIThreadInfo(threadId, ref gui) && gui.hwndCaret != IntPtr.Zero)
+                NativeMethods.POINT caretPt;
+                if (NativeMethods.TryGetCaretScreenPoint(out caretPt))
                 {
-                    NativeMethods.POINT pt = new NativeMethods.POINT
-                    {
-                        X = gui.rcCaret.Left,
-                        Y = gui.rcCaret.Bottom + 6
-                    };
-                    NativeMethods.ClientToScreen(gui.hwndCaret, ref pt);
-                    target = new Point(pt.X, pt.Y);
+                    target = new Point(caretPt.X, caretPt.Y);
                 }
-
-                if (target.X == 0 && target.Y == 0)
+                else
                 {
                     NativeMethods.POINT mousePt;
                     if (NativeMethods.GetCursorPos(out mousePt))

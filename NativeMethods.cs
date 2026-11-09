@@ -64,6 +64,48 @@ namespace UniPinyin
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool DestroyIcon(IntPtr hIcon);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("oleacc.dll")]
+        public static extern int AccessibleObjectFromWindow(IntPtr hwnd, uint dwId, ref Guid riid, [MarshalAs(UnmanagedType.IUnknown)] out object ppvObject);
+
+        [ComImport, Guid("618736e0-3c3d-11cf-810c-00aa00389b71"), InterfaceType(ComInterfaceType.InterfaceIsDual)]
+        public interface IAccessible
+        {
+            void D1(); void D2(); void D3(); void D4();
+            [PreserveSig] int get_accParent(out object ppdispParent);
+            [PreserveSig] int get_accChildCount(out int pcountChildren);
+            [PreserveSig] int get_accChild(object varChild, out object ppdispChild);
+            [PreserveSig] int get_accName(object varChild, out string pszName);
+            [PreserveSig] int get_accValue(object varChild, out string pszValue);
+            [PreserveSig] int get_accDescription(object varChild, out string pszDescription);
+            [PreserveSig] int get_accRole(object varChild, out object pvarRole);
+            [PreserveSig] int get_accState(object varChild, out object pvarState);
+            [PreserveSig] int get_accHelp(object varChild, out string pszHelp);
+            [PreserveSig] int get_accHelpTopic(out string pszHelpFile, object varChild, out int pidTopic);
+            [PreserveSig] int get_accKeyboardShortcut(object varChild, out string pszKeyboardShortcut);
+            [PreserveSig] int get_accFocus(out object pvarChild);
+            [PreserveSig] int get_accSelection(out object pvarChildren);
+            [PreserveSig] int get_accDefaultAction(object varChild, out string pszDefaultAction);
+            [PreserveSig] int accSelect(int flagsSelect, object varChild);
+            [PreserveSig] int accLocation(out int pxLeft, out int pyTop, out int pcxWidth, out int pcyHeight, object varChild);
+            [PreserveSig] int accNavigate(int navDir, object varStart, out object pvarEndUpAt);
+            [PreserveSig] int accHitTest(int xLeft, int yTop, out object pvarChild);
+            [PreserveSig] int accDoDefaultAction(object varChild);
+            [PreserveSig] int put_accName(object varChild, string szName);
+            [PreserveSig] int put_accValue(object varChild, string szValue);
+        }
+
+        public const uint OBJID_CARET = 0xFFFFFFF8;
+        public static readonly Guid IID_IAccessible = new Guid("618736e0-3c3d-11cf-810c-00aa00389b71");
+
+        public const int GWL_STYLE = -16;
+        public const int ES_READONLY = 0x0800;
+
         [DllImport("gdi32.dll", EntryPoint = "CreateRoundRectRgn")]
         public static extern IntPtr CreateRoundRectRgn(int nLeftRect, int nTopRect, int nRightRect, int nBottomRect, int nWidthEllipse, int nHeightEllipse);
 
@@ -190,6 +232,148 @@ namespace UniPinyin
             int structSize = Marshal.SizeOf(typeof(INPUT));
             uint sent = SendInput((uint)inputs.Length, inputs, structSize);
             return sent > 0;
+        }
+
+        public static bool TryGetMsaaCaretRect(IntPtr hWnd, out RECT rect)
+        {
+            rect = new RECT();
+            if (hWnd == IntPtr.Zero) return false;
+            try
+            {
+                Guid iid = IID_IAccessible;
+                object obj;
+                int hr = AccessibleObjectFromWindow(hWnd, OBJID_CARET, ref iid, out obj);
+                if (hr >= 0 && obj is IAccessible)
+                {
+                    int l, t, w, h;
+                    if (((IAccessible)obj).accLocation(out l, out t, out w, out h, 0) == 0 && (h > 0 || w > 0))
+                    {
+                        rect.Left = l;
+                        rect.Top = t;
+                        rect.Right = l + w;
+                        rect.Bottom = t + h;
+                        return true;
+                    }
+                }
+            }
+            catch { }
+            return false;
+        }
+
+        public static bool TryGetCaretScreenPoint(out POINT pt)
+        {
+            pt = new POINT();
+            IntPtr hFore = GetForegroundWindow();
+            if (hFore == IntPtr.Zero) return false;
+
+            uint threadId = GetWindowThreadProcessId(hFore, IntPtr.Zero);
+            GUITHREADINFO gui = new GUITHREADINFO();
+            gui.cbSize = (uint)Marshal.SizeOf(gui);
+
+            // 1. Thử lấy Win32 Caret chuẩn
+            if (GetGUIThreadInfo(threadId, ref gui) && gui.hwndCaret != IntPtr.Zero)
+            {
+                pt.X = gui.rcCaret.Left;
+                pt.Y = gui.rcCaret.Bottom + 6;
+                ClientToScreen(gui.hwndCaret, ref pt);
+                return true;
+            }
+
+            // 2. Thử lấy MSAA Caret (Chrome, Edge, Word, v.v.)
+            RECT msaaRect;
+            if (gui.hwndFocus != IntPtr.Zero && TryGetMsaaCaretRect(gui.hwndFocus, out msaaRect))
+            {
+                pt.X = msaaRect.Left;
+                pt.Y = msaaRect.Bottom + 6;
+                return true;
+            }
+
+            if (TryGetMsaaCaretRect(hFore, out msaaRect))
+            {
+                pt.X = msaaRect.Left;
+                pt.Y = msaaRect.Bottom + 6;
+                return true;
+            }
+
+            return false;
+        }
+
+        public static bool IsTypingContextActive()
+        {
+            IntPtr hFore = GetForegroundWindow();
+            if (hFore == IntPtr.Zero) return false;
+
+            System.Text.StringBuilder sbCls = new System.Text.StringBuilder(256);
+            GetClassName(hFore, sbCls, 256);
+            string foreCls = sbCls.ToString();
+
+            // 1. Loại trừ các cửa sổ hệ thống không bao giờ gõ chữ
+            if (foreCls == "Progman" || foreCls == "WorkerW" || 
+                foreCls == "Shell_TrayWnd" || foreCls == "Shell_SecondaryTrayWnd" ||
+                foreCls == "NotifyIconOverflowWindow")
+            {
+                return false;
+            }
+
+            uint threadId = GetWindowThreadProcessId(hFore, IntPtr.Zero);
+            GUITHREADINFO gui = new GUITHREADINFO();
+            gui.cbSize = (uint)Marshal.SizeOf(gui);
+
+            if (GetGUIThreadInfo(threadId, ref gui))
+            {
+                // A. Có con trỏ văn bản Win32 (Caret) đang nhấp nháy hoặc có kích thước
+                if (gui.hwndCaret != IntPtr.Zero) return true;
+                if ((gui.flags & 1) != 0) return true; // GUI_CARETBLINKING
+                if (gui.rcCaret.Right > gui.rcCaret.Left || gui.rcCaret.Bottom > gui.rcCaret.Top) return true;
+
+                // B. Kiểm tra control đang có keyboard focus (hwndFocus)
+                if (gui.hwndFocus != IntPtr.Zero)
+                {
+                    System.Text.StringBuilder sbFocus = new System.Text.StringBuilder(256);
+                    GetClassName(gui.hwndFocus, sbFocus, 256);
+                    string focusCls = sbFocus.ToString();
+
+                    // Các control nhập văn bản chuẩn
+                    if (focusCls.IndexOf("Edit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        focusCls.IndexOf("RichEdit", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        focusCls.IndexOf("Scintilla", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        focusCls.IndexOf("TextBox", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        focusCls == "ConsoleWindowClass" ||
+                        focusCls == "CASCADIA_HOSTING_WINDOW_CLASS")
+                    {
+                        int style = GetWindowLong(gui.hwndFocus, GWL_STYLE);
+                        if ((style & ES_READONLY) == 0)
+                        {
+                            return true;
+                        }
+                    }
+
+                    // Nếu là danh sách duyệt file trong File Explorer (chưa nhấn F2 để sửa tên) -> không gõ
+                    if (focusCls == "UIItemsView" || focusCls == "DirectUIHWND" || focusCls == "SysListView32" || focusCls == "SysTreeView32")
+                    {
+                        if (foreCls == "CabinetWClass" || foreCls == "ExploreWClass")
+                        {
+                            return false;
+                        }
+                    }
+
+                    // Thử MSAA Caret trên hwndFocus
+                    RECT rectFocus;
+                    if (TryGetMsaaCaretRect(gui.hwndFocus, out rectFocus))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            // C. Kiểm tra MSAA Caret trên Foreground Window (Chrome, Edge, Word, v.v.)
+            RECT rectFore;
+            if (TryGetMsaaCaretRect(hFore, out rectFore))
+            {
+                return true;
+            }
+
+            return false;
         }
     }
 }
