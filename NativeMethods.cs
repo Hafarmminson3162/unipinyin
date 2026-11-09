@@ -67,6 +67,9 @@ namespace UniPinyin
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern int GetClassName(IntPtr hWnd, System.Text.StringBuilder lpClassName, int nMaxCount);
 
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        public static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+
         [DllImport("user32.dll")]
         public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
@@ -102,6 +105,119 @@ namespace UniPinyin
 
         public const uint OBJID_CARET = 0xFFFFFFF8;
         public static readonly Guid IID_IAccessible = new Guid("618736e0-3c3d-11cf-810c-00aa00389b71");
+
+        [ComImport, Guid("30cbe57d-d9d0-452a-ab13-7ac5ac4825ee"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public interface IUIAutomation
+        {
+            [PreserveSig] int CompareElements(IntPtr el1, IntPtr el2, out bool areSame);
+            [PreserveSig] int CompareRuntimeIds(IntPtr r1, IntPtr r2, out bool areSame);
+            [PreserveSig] int GetRootElement(out IUIAutomationElement root);
+            [PreserveSig] int ElementFromHandle(IntPtr hwnd, out IUIAutomationElement element);
+            [PreserveSig] int ElementFromPoint(POINT pt, out IUIAutomationElement element);
+            [PreserveSig] int GetFocusedElement(out IUIAutomationElement element);
+        }
+
+        [ComImport, Guid("d22108aa-8ac5-49a5-837b-37bbb3d7591e"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+        public interface IUIAutomationElement
+        {
+            [PreserveSig] int SetFocus();
+            [PreserveSig] int GetRuntimeId(out IntPtr runtimeId);
+            [PreserveSig] int FindFirst(int scope, IntPtr condition, out IUIAutomationElement found);
+            [PreserveSig] int FindAll(int scope, IntPtr condition, out IntPtr found);
+            [PreserveSig] int FindFirstBuildCache(int scope, IntPtr condition, IntPtr cacheRequest, out IUIAutomationElement found);
+            [PreserveSig] int FindAllBuildCache(int scope, IntPtr condition, IntPtr cacheRequest, out IntPtr found);
+            [PreserveSig] int BuildUpdatedCache(IntPtr cacheRequest, out IUIAutomationElement updatedElement);
+            [PreserveSig] int GetCurrentPropertyValue(int propertyId, out object value);
+            [PreserveSig] int GetCurrentPropertyValueEx(int propertyId, bool ignoreDefaultValue, out object value);
+            [PreserveSig] int GetCachedPropertyValue(int propertyId, out object value);
+            [PreserveSig] int GetCachedPropertyValueEx(int propertyId, bool ignoreDefaultValue, out object value);
+            [PreserveSig] int GetCurrentPatternAs(int patternId, ref Guid riid, out IntPtr patternObject);
+            [PreserveSig] int GetCachedPatternAs(int patternId, ref Guid riid, out IntPtr patternObject);
+            [PreserveSig] int GetCurrentPattern(int patternId, out IntPtr patternObject);
+            [PreserveSig] int GetCachedPattern(int patternId, out IntPtr patternObject);
+            [PreserveSig] int GetCachedParent(out IUIAutomationElement parent);
+            [PreserveSig] int GetCachedChildren(out IntPtr children);
+            [PreserveSig] int get_CurrentProcessId(out int retVal);
+            [PreserveSig] int get_CurrentControlType(out int retVal);
+            [PreserveSig] int get_CurrentLocalizedControlType(out string retVal);
+            [PreserveSig] int get_CurrentName(out string retVal);
+        }
+
+        [ComImport, Guid("ff48dba4-60ef-4201-aa87-54103eef594e")]
+        public class CUIAutomation {}
+
+        public const int UIA_EditControlTypeId = 50004;
+        public const int UIA_DocumentControlTypeId = 50030;
+        public const int UIA_IsValuePatternAvailablePropertyId = 30043;
+        public const int UIA_IsTextPatternAvailablePropertyId = 30040;
+
+        private static IUIAutomation _uiaInstance;
+        private static readonly object _uiaLock = new object();
+
+        public static bool IsBrowserInputFocused(string title)
+        {
+            try
+            {
+                if (_uiaInstance == null)
+                {
+                    lock (_uiaLock)
+                    {
+                        if (_uiaInstance == null)
+                        {
+                            _uiaInstance = (IUIAutomation)new CUIAutomation();
+                        }
+                    }
+                }
+
+                IUIAutomationElement el;
+                int hr = _uiaInstance.GetFocusedElement(out el);
+                if (hr == 0 && el != null)
+                {
+                    int ctrlType;
+                    el.get_CurrentControlType(out ctrlType);
+                    if (ctrlType == UIA_EditControlTypeId)
+                    {
+                        return true;
+                    }
+
+                    object valAvail;
+                    el.GetCurrentPropertyValue(UIA_IsValuePatternAvailablePropertyId, out valAvail);
+                    if (valAvail is bool && (bool)valAvail)
+                    {
+                        return true;
+                    }
+
+                    object textAvail;
+                    el.GetCurrentPropertyValue(UIA_IsTextPatternAvailablePropertyId, out textAvail);
+                    if (textAvail is bool && (bool)textAvail && ctrlType != 50033) // 50033 = Pane (viewport/video)
+                    {
+                        return true;
+                    }
+
+                    if (ctrlType == UIA_DocumentControlTypeId)
+                    {
+                        string locType;
+                        el.get_CurrentLocalizedControlType(out locType);
+                        if (!string.IsNullOrEmpty(locType) && locType.IndexOf("edit", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+            }
+            catch { }
+
+            // Fallback nếu UIA không lấy được:
+            // Nếu tab hiện tại là YouTube (tiêu đề chứa YouTube) -> mặc định không gõ để các phím tắt f, t, i, k hoạt động bình thường
+            if (!string.IsNullOrEmpty(title) && title.IndexOf("YouTube", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return false;
+            }
+
+            return true;
+        }
 
         public const int GWL_STYLE = -16;
         public const int ES_READONLY = 0x0800;
@@ -373,12 +489,18 @@ namespace UniPinyin
                 return true;
             }
 
-            // D. Hỗ trợ các trình duyệt web hiện đại, ứng dụng Electron & văn phòng
-            // (Chromium/Chrome/Edge/Brave/Opera, Firefox, Word/Office, VS Code, Discord, Slack...)
-            // Do các ứng dụng này vẽ UI bằng Skia/DirectWrite riêng không dùng Win32 Caret HWND.
-            if (foreCls.StartsWith("Chrome_WidgetWin_") ||
-                foreCls == "MozillaWindowClass" ||
-                foreCls == "OpusApp" || foreCls == "XLMAIN" || foreCls == "PPTFrameClass" ||
+            // D. Trình duyệt web hiện đại & ứng dụng Electron (Chrome, Edge, Brave, Firefox...)
+            // Kiểm tra chính xác xem người dùng có đang focus vào ô nhập văn bản (input, textarea, omnibox) không,
+            // để tránh chặn phím tắt khi người dùng xem video (như YouTube: f để toàn màn hình, t xem rộng, i thu nhỏ...)
+            if (foreCls.StartsWith("Chrome_WidgetWin_") || foreCls == "MozillaWindowClass")
+            {
+                System.Text.StringBuilder sbTitle = new System.Text.StringBuilder(512);
+                GetWindowText(hFore, sbTitle, 512);
+                return IsBrowserInputFocused(sbTitle.ToString());
+            }
+
+            // E. Các ứng dụng văn phòng, soạn thảo văn bản và IDE chuyên dụng (Word, Excel, PPT, JetBrains, Notepad++, Sublime)
+            if (foreCls == "OpusApp" || foreCls == "XLMAIN" || foreCls == "PPTFrameClass" ||
                 foreCls == "Framework::CFrame" ||
                 foreCls == "SunAwtFrame" ||
                 foreCls.StartsWith("Qt5QWindow") || foreCls.StartsWith("Qt6QWindow") ||
